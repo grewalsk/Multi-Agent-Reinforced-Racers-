@@ -14,52 +14,45 @@ A multi-agent reinforcement learning framework built on MetaDrive for autonomous
 
 #### Core IPPO Formulation
 
-For N agents, each agent i maintains its own policy π^i(a^i|s^i) and value function V^i(s^i), where:
+For N agents, each agent i maintains its own policy π<sup>i</sup>(a<sup>i</sup>|s<sup>i</sup>) and value function V<sup>i</sup>(s<sup>i</sup>), where:
 
 **Policy Objective**:
-```
-J^i(θ^i) = E[∑_{t=0}^T γ^t r^i_t]
-```
+
+J<sup>i</sup>(θ<sup>i</sup>) = 𝔼[∑<sub>t=0</sub><sup>T</sup> γ<sup>t</sup> r<sup>i</sup><sub>t</sub>]
 
 **Surrogate Loss Function**:
-```
-L^{CLIP,i}(θ^i) = E_t[min(ratio_t^i(θ^i) A^i_t, clip(ratio_t^i(θ^i), 1-ε, 1+ε) A^i_t)]
-```
+
+L<sup>CLIP,i</sup>(θ<sup>i</sup>) = 𝔼<sub>t</sub>[min(ratio<sub>t</sub><sup>i</sup>(θ<sup>i</sup>) A<sup>i</sup><sub>t</sub>, clip(ratio<sub>t</sub><sup>i</sup>(θ<sup>i</sup>), 1-ε, 1+ε) A<sup>i</sup><sub>t</sub>)]
 
 Where:
-- `ratio_t^i(θ^i) = π^i_θ(a^i_t|s^i_t) / π^i_{θ_old}(a^i_t|s^i_t)`
-- `A^i_t` = Generalized Advantage Estimation for agent i
-- `ε = 0.2` = clipping parameter
+- ratio<sub>t</sub><sup>i</sup>(θ<sup>i</sup>) = π<sup>i</sup><sub>θ</sub>(a<sup>i</sup><sub>t</sub>|s<sup>i</sup><sub>t</sub>) / π<sup>i</sup><sub>θ_old</sub>(a<sup>i</sup><sub>t</sub>|s<sup>i</sup><sub>t</sub>)
+- A<sup>i</sup><sub>t</sub> = Generalized Advantage Estimation for agent i
+- ε = 0.2 = clipping parameter
 
 #### Value & Advantage Estimation
 
 **Temporal Difference Error**:
-```
-δ^i_t = r^i_t + γV^i(s^i_{t+1}) - V^i(s^i_t)
-```
+
+δ<sup>i</sup><sub>t</sub> = r<sup>i</sup><sub>t</sub> + γV<sup>i</sup>(s<sup>i</sup><sub>t+1</sub>) - V<sup>i</sup>(s<sup>i</sup><sub>t</sub>)
 
 **Generalized Advantage Estimation (GAE)**:
-```
-A^i_t = ∑_{l=0}^{T-t-1} (γλ)^l δ^i_{t+l}
-```
+
+A<sup>i</sup><sub>t</sub> = ∑<sub>l=0</sub><sup>T-t-1</sup> (γλ)<sup>l</sup> δ<sup>i</sup><sub>t+l</sub>
 
 **Value Function Loss**:
-```
-L^{VF,i} = (V^i_θ(s^i_t) - V^i_{target,t})^2
-```
 
-Where `V^i_{target,t} = A^i_t + V^i(s^i_t)` and `λ = 0.95`
+L<sup>VF,i</sup> = (V<sup>i</sup><sub>θ</sub>(s<sup>i</sup><sub>t</sub>) - V<sup>i</sup><sub>target,t</sub>)<sup>2</sup>
+
+Where V<sup>i</sup><sub>target,t</sub> = A<sup>i</sup><sub>t</sub> + V<sup>i</sup>(s<sup>i</sup><sub>t</sub>) and λ = 0.95
 
 #### Complete PPO Loss per Agent
 
-```
-L^{TOTAL,i} = L^{CLIP,i} + c_1 L^{VF,i} - c_2 S[π^i_θ](s^i_t)
-```
+L<sup>TOTAL,i</sup> = L<sup>CLIP,i</sup> + c₁ L<sup>VF,i</sup> - c₂ S[π<sup>i</sup><sub>θ</sub>](s<sup>i</sup><sub>t</sub>)
 
 Where:
-- `c_1 = 0.5` = value function coefficient
-- `c_2 = 0.01` = entropy coefficient  
-- `S[π^i_θ](s^i_t) = -∑_a π^i_θ(a|s^i_t) log π^i_θ(a|s^i_t)` = entropy bonus
+- c₁ = 0.5 = value function coefficient
+- c₂ = 0.01 = entropy coefficient  
+- S[π<sup>i</sup><sub>θ</sub>](s<sup>i</sup><sub>t</sub>) = -∑<sub>a</sub> π<sup>i</sup><sub>θ</sub>(a|s<sup>i</sup><sub>t</sub>) log π<sup>i</sup><sub>θ</sub>(a|s<sup>i</sup><sub>t</sub>) = entropy bonus
 
 ```python
 # Core IPPO approach
@@ -73,8 +66,8 @@ for agent_id in range(num_agents):
 ```
 
 **Key Properties**:
-- **Independent Learning**: Each agent i optimizes J^i(θ^i) independently
-- **Non-Stationarity**: Other agents appear as environment dynamics in MDP^i
+- **Independent Learning**: Each agent i optimizes J<sup>i</sup>(θ<sup>i</sup>) independently
+- **Non-Stationarity**: Other agents appear as environment dynamics in MDP<sup>i</sup>
 - **Scalable Training**: O(N) complexity scaling with number of agents
 
 ### 3. Procedural Environment Extensions
@@ -99,57 +92,49 @@ track_config = {
 
 For agent i at timestep t, the observation vector is:
 
-```
-s^i_t = [s^{ego}_t, s^{nav}_t, s^{lidar}_t] ∈ ℝ^260
-```
+s<sup>i</sup><sub>t</sub> = [s<sup>ego</sup><sub>t</sub>, s<sup>nav</sup><sub>t</sub>, s<sup>lidar</sup><sub>t</sub>] ∈ ℝ<sup>260</sup>
 
-**Ego State Vector** `s^{ego}_t ∈ ℝ^8`:
-```
-s^{ego}_t = [
-    θ_steering,        # ∈ [-1, 1]
-    θ_heading,         # ∈ [0, 2π] 
-    v_x, v_y, ω,       # velocity components & angular velocity
-    d_front, d_left, d_right  # proximity distances [0, 1]
-]
-```
+**Ego State Vector** s<sup>ego</sup><sub>t</sub> ∈ ℝ<sup>8</sup>:
 
-**Navigation State** `s^{nav}_t ∈ ℝ^12`:
-```
-s^{nav}_t = [x₁, y₁, x₂, y₂, ..., x₆, y₆]^T
-```
-Where `(xⱼ, yⱼ)` are ego-relative waypoint coordinates transformed by:
-```
-[x'ⱼ, y'ⱼ]^T = R(-θ_heading) · ([xⱼ, yⱼ]^T - [x_ego, y_ego]^T)
-```
+s<sup>ego</sup><sub>t</sub> = [θ<sub>steering</sub>, θ<sub>heading</sub>, v<sub>x</sub>, v<sub>y</sub>, ω, d<sub>front</sub>, d<sub>left</sub>, d<sub>right</sub>]<sup>T</sup>
 
-**Surrounding State (Lidar)** `s^{lidar}_t ∈ ℝ^240`:
-```
-s^{lidar}_t[k] = min(d_max, ray_distance(θ_k)) / d_max
-```
-Where `θ_k = k · (2π/240)` for k ∈ {0, 1, ..., 239} and `d_max = 50m`
+Where:
+- θ<sub>steering</sub> ∈ [-1, 1] (steering angle)
+- θ<sub>heading</sub> ∈ [0, 2π] (heading angle)
+- v<sub>x</sub>, v<sub>y</sub>, ω = velocity components & angular velocity
+- d<sub>front</sub>, d<sub>left</sub>, d<sub>right</sub> ∈ [0, 1] = proximity distances
+
+**Navigation State** s<sup>nav</sup><sub>t</sub> ∈ ℝ<sup>12</sup>:
+
+s<sup>nav</sup><sub>t</sub> = [x₁, y₁, x₂, y₂, ..., x₆, y₆]<sup>T</sup>
+
+Where (x<sub>j</sub>, y<sub>j</sub>) are ego-relative waypoint coordinates transformed by:
+
+[x'<sub>j</sub>, y'<sub>j</sub>]<sup>T</sup> = R(-θ<sub>heading</sub>) · ([x<sub>j</sub>, y<sub>j</sub>]<sup>T</sup> - [x<sub>ego</sub>, y<sub>ego</sub>]<sup>T</sup>)
+
+**Surrounding State (Lidar)** s<sup>lidar</sup><sub>t</sub> ∈ ℝ<sup>240</sup>:
+
+s<sup>lidar</sup><sub>t</sub>[k] = min(d<sub>max</sub>, ray_distance(θ<sub>k</sub>)) / d<sub>max</sub>
+
+Where θ<sub>k</sub> = k · (2π/240) for k ∈ {0, 1, ..., 239} and d<sub>max</sub> = 50m
 
 #### Action Space Transformation
 
-**Policy Output**: `a^i_t = [a₁, a₂]^T ∈ [-1, 1]²`
+**Policy Output**: a<sup>i</sup><sub>t</sub> = [a₁, a₂]<sup>T</sup> ∈ [-1, 1]²
 
 **Vehicle Control Mapping**:
-```
-u_steering = a₁ · S_max  where S_max = 0.4 rad
 
-u_throttle = {
-    a₂ · F_max,  if a₂ ≥ 0  (F_max = 2000 N)
-    0,           if a₂ < 0
-}
+u<sub>steering</sub> = a₁ · S<sub>max</sub>  where S<sub>max</sub> = 0.4 rad
 
-u_brake = {
-    0,              if a₂ ≥ 0
-    |a₂| · B_max,   if a₂ < 0  (B_max = 1000 N)
-}
-```
+u<sub>throttle</sub> = { a₂ · F<sub>max</sub>, if a₂ ≥ 0  (F<sub>max</sub> = 2000 N)
+                        { 0,                 if a₂ < 0
+
+u<sub>brake</sub> = { 0,                    if a₂ ≥ 0
+                    { |a₂| · B<sub>max</sub>,  if a₂ < 0  (B<sub>max</sub> = 1000 N)
 
 **Control Constraints**:
-- Steering rate limit: `|du_steering/dt| ≤ 2.0 rad/s`
-- Throttle/brake mutual exclusion: `u_throttle · u_brake = 0`
+- Steering rate limit: |du<sub>steering</sub>/dt| ≤ 2.0 rad/s
+- Throttle/brake mutual exclusion: u<sub>throttle</sub> · u<sub>brake</sub> = 0
 
 ### 5. Reward & Cost Function Mathematical Formulation
 
@@ -157,71 +142,60 @@ u_brake = {
 
 For agent i at timestep t, the total reward is:
 
-```
-r^i_t = R^{positive}_t - C^{penalty}_t
-```
+r<sup>i</sup><sub>t</sub> = R<sup>positive</sup><sub>t</sub> - C<sup>penalty</sup><sub>t</sub>
 
 #### Cost Penalty Terms
 
 **Collision Cost**:
-```
-C^{collision}_t = α_col · I(collision_detected) = 10.0 · I(collision_detected)
-```
+
+C<sup>collision</sup><sub>t</sub> = α<sub>col</sub> · I(collision_detected) = 10.0 · I(collision_detected)
 
 **Off-Road Cost**:
-```
-C^{off-road}_t = α_off · ∫₀^Δt I(off_road(τ)) dτ / Δt = 0.1 · t_off_road / Δt
-```
+
+C<sup>off-road</sup><sub>t</sub> = α<sub>off</sub> · ∫₀<sup>Δt</sup> I(off_road(τ)) dτ / Δt = 0.1 · t<sub>off_road</sub> / Δt
 
 **Line Crossing Cost**:
-```
-C^{line}_t = α_line · (I(yellow_cross) + I(white_cross)) = 0.05 · n_crossings
-```
+
+C<sup>line</sup><sub>t</sub> = α<sub>line</sub> · (I(yellow_cross) + I(white_cross)) = 0.05 · n<sub>crossings</sub>
 
 **Wrong-Side Driving Cost**:
-```
-C^{wrong}_t = α_wrong · I(wrong_lane) = 0.5 · I(wrong_lane)
-```
+
+C<sup>wrong</sup><sub>t</sub> = α<sub>wrong</sub> · I(wrong_lane) = 0.5 · I(wrong_lane)
 
 #### Positive Reward Terms
 
 **Progress Reward**:
-```
-R^{progress}_t = β_prog · Δd_goal / L_track = 2.0 · (d^i_{goal,t} - d^i_{goal,t-1}) / L_track
-```
+
+R<sup>progress</sup><sub>t</sub> = β<sub>prog</sub> · Δd<sub>goal</sub> / L<sub>track</sub> = 2.0 · (d<sup>i</sup><sub>goal,t</sub> - d<sup>i</sup><sub>goal,t-1</sub>) / L<sub>track</sub>
 
 **Speed Maintenance Reward**:
-```
-R^{speed}_t = β_speed · min(v^i_current / v_target, 1.0) = 0.1 · min(||v^i_t|| / 15.0, 1.0)
-```
+
+R<sup>speed</sup><sub>t</sub> = β<sub>speed</sub> · min(v<sup>i</sup><sub>current</sub> / v<sub>target</sub>, 1.0) = 0.1 · min(||v<sup>i</sup><sub>t</sub>|| / 15.0, 1.0)
 
 **Competitive Leading Reward**:
-```
-R^{leading}_t = β_lead · I(d^i_{goal,t} = max_j d^j_{goal,t}) = 1.0 · I(leading_position)
-```
+
+R<sup>leading</sup><sub>t</sub> = β<sub>lead</sub> · I(d<sup>i</sup><sub>goal,t</sub> = max<sub>j</sub> d<sup>j</sup><sub>goal,t</sub>) = 1.0 · I(leading_position)
 
 **Checkpoint Completion Reward**:
-```
-R^{checkpoint}_t = β_check · I(checkpoint_reached) · (1 + 0.5 · I(first_to_reach))
+
+R<sup>checkpoint</sup><sub>t</sub> = β<sub>check</sub> · I(checkpoint_reached) · (1 + 0.5 · I(first_to_reach))
 = 5.0 · I(checkpoint_reached) · (1 + 0.5 · I(first_to_reach))
-```
 
 **Finish Line Reward**:
-```
-R^{finish}_t = β_finish · I(finish_reached) · (1 + 2.0 · I(race_winner))
+
+R<sup>finish</sup><sub>t</sub> = β<sub>finish</sub> · I(finish_reached) · (1 + 2.0 · I(race_winner))
 = 50.0 · I(finish_reached) · (1 + 2.0 · I(race_winner))
-```
 
 #### Mathematical Properties
 
-**Reward Bounds**: `r^i_t ∈ [-11.15, 155.6]` per timestep
+**Reward Bounds**: r<sup>i</sup><sub>t</sub> ∈ [-11.15, 155.6] per timestep
 
-**Expected Return**: `G^i_t = E[∑_{k=0}^∞ γ^k r^i_{t+k}]` where γ = 0.99
+**Expected Return**: G<sup>i</sup><sub>t</sub> = 𝔼[∑<sub>k=0</sub><sup>∞</sup> γ<sup>k</sup> r<sup>i</sup><sub>t+k</sub>] where γ = 0.99
 
 **Coefficient Rationale**:
-- Progress dominates: `β_prog >> α_penalties` encourages forward movement
-- Safety penalties: `α_col >> other_costs` heavily penalizes crashes
-- Competition incentives: `β_finish >> β_check >> β_lead` creates racing hierarchy
+- Progress dominates: β<sub>prog</sub> >> α<sub>penalties</sub> encourages forward movement
+- Safety penalties: α<sub>col</sub> >> other_costs heavily penalizes crashes
+- Competition incentives: β<sub>finish</sub> >> β<sub>check</sub> >> β<sub>lead</sub> creates racing hierarchy
 
 ### 6. Neural Network Architecture & Forward Pass
 
@@ -229,37 +203,35 @@ R^{finish}_t = β_finish · I(finish_reached) · (1 + 2.0 · I(race_winner))
 
 For agent i, the neural network processes observations through:
 
-```
-s^i_t ∈ ℝ^260 → h₁ ∈ ℝ^256 → h₂ ∈ ℝ^256 → h₃ ∈ ℝ^128 → LSTM → {Actor, Critic}
-```
+s<sup>i</sup><sub>t</sub> ∈ ℝ<sup>260</sup> → h₁ ∈ ℝ<sup>256</sup> → h₂ ∈ ℝ<sup>256</sup> → h₃ ∈ ℝ<sup>128</sup> → LSTM → {Actor, Critic}
 
 **Base MLP Layers**:
-```
-h₁ = ReLU(W₁s^i_t + b₁)     # W₁ ∈ ℝ^{256×260}
-h₂ = ReLU(W₂h₁ + b₂)        # W₂ ∈ ℝ^{256×256}  
-h₃ = ReLU(W₃h₂ + b₃)        # W₃ ∈ ℝ^{128×256}
-```
+
+h₁ = ReLU(W₁s<sup>i</sup><sub>t</sub> + b₁)     where W₁ ∈ ℝ<sup>256×260</sup>
+
+h₂ = ReLU(W₂h₁ + b₂)        where W₂ ∈ ℝ<sup>256×256</sup>
+
+h₃ = ReLU(W₃h₂ + b₃)        where W₃ ∈ ℝ<sup>128×256</sup>
 
 **LSTM Recurrence**:
-```
-h^i_{lstm,t}, c^i_{lstm,t} = LSTM(h₃, h^i_{lstm,t-1}, c^i_{lstm,t-1})
-```
+
+h<sup>i</sup><sub>lstm,t</sub>, c<sup>i</sup><sub>lstm,t</sub> = LSTM(h₃, h<sup>i</sup><sub>lstm,t-1</sub>, c<sup>i</sup><sub>lstm,t-1</sub>)
+
 Where LSTM cell size = 256, sequence length = 32
 
 #### Policy & Value Head Computations
 
 **Actor Network (Policy)**:
-```
-μ^i_t = tanh(W_π h^i_{lstm,t} + b_π)     # W_π ∈ ℝ^{2×256}
-π^i_θ(a^i_t|s^i_t) = N(μ^i_t, Σ)       # Gaussian policy
-```
 
-Where covariance `Σ = diag(σ₁², σ₂²)` with learnable log standard deviations.
+μ<sup>i</sup><sub>t</sub> = tanh(W<sub>π</sub> h<sup>i</sup><sub>lstm,t</sub> + b<sub>π</sub>)     where W<sub>π</sub> ∈ ℝ<sup>2×256</sup>
+
+π<sup>i</sup><sub>θ</sub>(a<sup>i</sup><sub>t</sub>|s<sup>i</sup><sub>t</sub>) = 𝒩(μ<sup>i</sup><sub>t</sub>, Σ)       (Gaussian policy)
+
+Where covariance Σ = diag(σ₁², σ₂²) with learnable log standard deviations.
 
 **Critic Network (Value Function)**:
-```
-V^i_θ(s^i_t) = W_v h^i_{lstm,t} + b_v    # W_v ∈ ℝ^{1×256}
-```
+
+V<sup>i</sup><sub>θ</sub>(s<sup>i</sup><sub>t</sub>) = W<sub>v</sub> h<sup>i</sup><sub>lstm,t</sub> + b<sub>v</sub>    where W<sub>v</sub> ∈ ℝ<sup>1×256</sup>
 
 #### Parameter Count
 - **Total Parameters per Agent**: ~847,000
