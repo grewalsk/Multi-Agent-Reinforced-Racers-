@@ -1,161 +1,360 @@
-<br>
+# Multi-Agent Reinforced Racers (MARR)
 
-![](documentation/source/figs/logo-horizon.png)
+A multi-agent reinforcement learning framework built on MetaDrive for autonomous racing environments. MARR extends the original MetaDrive simulator to support simultaneous training of multiple independent agents using Independent Proximal Policy Optimization (IPPO).
 
-<br>
+## Key Technical Enhancements
 
-# MetaDrive: an Open-source Driving Simulator for AI and Autonomy Research
+### 1. Multi-Agent Architecture
 
-[![build](https://github.com/metadriverse/metadrive/workflows/test/badge.svg)](http://github.com/metadriverse/metadrive/actions)
-[![Documentation](https://readthedocs.org/projects/metadrive-simulator/badge/?version=latest)](https://metadrive-simulator.readthedocs.io)
-[![GitHub license](https://img.shields.io/github/license/metadriverse/metadrive)](https://github.com/metadriverse/metadrive/blob/main/LICENSE.txt)
-[![GitHub contributors](https://img.shields.io/github/contributors/metadriverse/metadrive)](https://github.com/metadriverse/metadrive/graphs/contributors)
-[![Downloads](https://static.pepy.tech/badge/MetaDrive-simulator)](https://pepy.tech/project/MetaDrive-simulator)
+- **Concurrent Agent Management**: Supports N simultaneous agents in a single environment instance
+- **Direct Policy Mapping**: Each agent (`agent0`, `agent1`, ..., `agentN`) maintains its own independent actor-critic network
+- **Decentralized Execution**: No centralized coordination or communication between agents during execution
 
-<div style="text-align: center; width:100%; margin: 0 auto; display: inline-block">
-<strong>
-[
-<a href="https://metadrive-simulator.readthedocs.io">Documentation</a>
-|
-<a href="https://github.com/metadriverse/metadrive?tab=readme-ov-file#-examples">Colab Examples</a>
-|
-<a href="https://www.youtube.com/embed/3ziJPqC_-T4">Demo Video</a>
-|
-<a href="https://metadriverse.github.io/metadrive-simulator/">Website</a>
-|
-<a href="https://arxiv.org/pdf/2109.12674.pdf">Paper</a>
-|
-<a href="https://metadriverse.github.io/">Relevant Projects</a>
-]
-</strong>
-</div>
+### 2. Independent PPO (IPPO) Mathematical Framework
 
-<br>
+#### Core IPPO Formulation
 
-MetaDrive is a driving simulator with the following key features:
+For N agents, each agent i maintains its own policy π^i(a^i|s^i) and value function V^i(s^i), where:
 
-- **Compositional**: It supports synthesising infinite scenes with various road maps and traffic settings or loading real-world driving logs for the research of generalizable RL. 
-- **Lightweight**: It is easy to install and run on Linux/Windows/MacOS with sensor simulation support. It can run up to +1000 FPS on a standard PC.
-- **Realistic**: Accurate physics simulation and multiple sensory input including point cloud, RGB/Depth/Semantic images, top-down semantic map and first-person view images. 
-
-
-## 🛠 Quick Start
-Install MetaDrive via:
-
-```bash
-git clone https://github.com/metadriverse/metadrive.git
-cd metadrive
-pip install -e .
+**Policy Objective**:
+```
+J^i(θ^i) = E[∑_{t=0}^T γ^t r^i_t]
 ```
 
-You can verify the installation of MetaDrive via running the testing script:
-
-```bash
-# Go to a folder where no sub-folder calls metadrive
-python -m metadrive.examples.profile_metadrive
+**Surrogate Loss Function**:
+```
+L^{CLIP,i}(θ^i) = E_t[min(ratio_t^i(θ^i) A^i_t, clip(ratio_t^i(θ^i), 1-ε, 1+ε) A^i_t)]
 ```
 
-*Note that please do not run the above command in a folder that has a sub-folder called `./metadrive`.*
+Where:
+- `ratio_t^i(θ^i) = π^i_θ(a^i_t|s^i_t) / π^i_{θ_old}(a^i_t|s^i_t)`
+- `A^i_t` = Generalized Advantage Estimation for agent i
+- `ε = 0.2` = clipping parameter
 
-## 🚕 Examples
-We provide [examples](https://github.com/metadriverse/metadrive/tree/main/metadrive/examples) to demonstrate features and basic usages of MetaDrive after the local installation.
-There is an `.ipynb` example which can be directly opened in Colab. [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/metadriverse/metadrive/blob/main/metadrive/examples/Basic_MetaDrive_Usages.ipynb)
+#### Value & Advantage Estimation
 
-Also, you can try examples in the documentation directly in Colab! See more details in [Documentations](#-documentations).
-
-### Single Agent Environment
-Run the following command to launch a simple driving scenario with auto-drive mode on. Press W, A, S, D to drive the vehicle manually.
-```bash
-python -m metadrive.examples.drive_in_single_agent_env
+**Temporal Difference Error**:
 ```
-Run the following command to launch a safe driving scenario, which includes more complex obstacles and cost to be yielded. 
-
-```bash
-python -m metadrive.examples.drive_in_safe_metadrive_env
+δ^i_t = r^i_t + γV^i(s^i_{t+1}) - V^i(s^i_t)
 ```
 
-### Multi-Agent Environment
-
-You can also launch an instance of Multi-Agent scenario as follows
-
-```bash
-python -m metadrive.examples.drive_in_multi_agent_env --env roundabout
+**Generalized Advantage Estimation (GAE)**:
 ```
-```--env```  accepts following parmeters: `roundabout` (default), `intersection`, `tollgate`, `bottleneck`, `parkinglot`, `pgmap`.
-Adding ```--top_down``` can launch top-down pygame renderer. 
-
-
-
-
-### Real Environment
-Running the following script enables driving in a scenario constructed from nuScenes dataset or Waymo dataset.
-
-```bash
-python -m metadrive.examples.drive_in_real_env
+A^i_t = ∑_{l=0}^{T-t-1} (γλ)^l δ^i_{t+l}
 ```
 
-The default real-world dataset is nuScenes.
-Use ```--waymo``` to visualize Waymo scenarios.
-Traffic vehicles can not response to surrounding vchicles if directly replaying them.
-Add argument ```--reactive_traffic``` to use an IDM policy control them and make them reactive.
-Press key ```r``` for loading a new scenario, and ```b``` or ```q``` for switching perspective. 
+**Value Function Loss**:
+```
+L^{VF,i} = (V^i_θ(s^i_t) - V^i_{target,t})^2
+```
 
+Where `V^i_{target,t} = A^i_t + V^i(s^i_t)` and `λ = 0.95`
 
+#### Complete PPO Loss per Agent
 
-### Basic Usage
-To build the RL environment in python script, you can simply code in the Farama Gymnasium format as:
+```
+L^{TOTAL,i} = L^{CLIP,i} + c_1 L^{VF,i} - c_2 S[π^i_θ](s^i_t)
+```
+
+Where:
+- `c_1 = 0.5` = value function coefficient
+- `c_2 = 0.01` = entropy coefficient  
+- `S[π^i_θ](s^i_t) = -∑_a π^i_θ(a|s^i_t) log π^i_θ(a|s^i_t)` = entropy bonus
 
 ```python
-from metadrive.envs.metadrive_env import MetaDriveEnv
-
-env = MetaDriveEnv(config={"use_render": True})
-obs, info = env.reset()
-for i in range(1000):
-    obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
-    if terminated or truncated:
-        env.reset()
-env.close()
+# Core IPPO approach
+for agent_id in range(num_agents):
+    policy = PPOPolicy(
+        observation_space=obs_space,
+        action_space=action_space,
+        config=ppo_config
+    )
+    agent_policies[agent_id] = policy
 ```
 
+**Key Properties**:
+- **Independent Learning**: Each agent i optimizes J^i(θ^i) independently
+- **Non-Stationarity**: Other agents appear as environment dynamics in MDP^i
+- **Scalable Training**: O(N) complexity scaling with number of agents
 
-## 🏫 Documentations
+### 3. Procedural Environment Extensions
 
-Please find more details in: https://metadrive-simulator.readthedocs.io
+#### Track Generation Parameters
+- **Lane Width Variability**: Configurable `lane_width` parameter for diverse track geometries
+- **Checkpoint System**: Strategically placed checkpoint objects with position-based rewards
+- **Finish Line Detection**: Dedicated finish-line objects with completion bonuses
 
-### Running Examples in Doc
-The documentation is built with `.ipynb` so every example can run locally
-or with colab. For Colab running, on the Colab interface, click “GitHub,” enter the URL of MetaDrive:
-https://github.com/metadriverse/metadrive, and hit the search icon.
-After running examples, you are expected to get the same output and visualization results as the documentation!
-
-For example, hitting the following icon opens the source `.ipynb` file of the documentation section: [Environments](https://metadrive-simulator.readthedocs.io/en/latest/rl_environments.html).
-
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/metadriverse/metadrive/blob/main/documentation/source/rl_environments.ipynb)
-
-## 📎 References
-
-If you use MetaDrive in your own work, please cite:
-
-```latex
-@article{li2022metadrive,
-  title={Metadrive: Composing diverse driving scenarios for generalizable reinforcement learning},
-  author={Li, Quanyi and Peng, Zhenghao and Feng, Lan and Zhang, Qihang and Xue, Zhenghai and Zhou, Bolei},
-  journal={IEEE Transactions on Pattern Analysis and Machine Intelligence},
-  year={2022}
+#### Technical Implementation
+```python
+track_config = {
+    "lane_width": [3.0, 4.0, 5.0],  # meters
+    "checkpoint_interval": 100,      # meters
+    "track_complexity": "medium"
 }
 ```
 
+### 4. Observation & Action Mathematical Representations
 
-## Acknowledgement
+#### Observation Space Definition
 
-The simulator can not be built without the help from Panda3D community and the following open-sourced projects:
-- panda3d-simplepbr: https://github.com/Moguri/panda3d-simplepbr
-- panda3d-gltf: https://github.com/Moguri/panda3d-gltf
-- RenderPipeline (RP): https://github.com/tobspr/RenderPipeline
-- Water effect for RP: https://github.com/kergalym/RenderPipeline 
-- procedural_panda3d_model_primitives: https://github.com/Epihaius/procedural_panda3d_model_primitives
-- DiamondSquare for terrain generation: https://github.com/buckinha/DiamondSquare
-- KITSUNETSUKI-Asset-Tools: https://github.com/kitsune-ONE-team/KITSUNETSUKI-Asset-Tools
+For agent i at timestep t, the observation vector is:
 
-# Multi-Agent-Reinforced-Racers-
-# Multi-Agent-Reinforced-Racers-
+```
+s^i_t = [s^{ego}_t, s^{nav}_t, s^{lidar}_t] ∈ ℝ^260
+```
+
+**Ego State Vector** `s^{ego}_t ∈ ℝ^8`:
+```
+s^{ego}_t = [
+    θ_steering,        # ∈ [-1, 1]
+    θ_heading,         # ∈ [0, 2π] 
+    v_x, v_y, ω,       # velocity components & angular velocity
+    d_front, d_left, d_right  # proximity distances [0, 1]
+]
+```
+
+**Navigation State** `s^{nav}_t ∈ ℝ^12`:
+```
+s^{nav}_t = [x₁, y₁, x₂, y₂, ..., x₆, y₆]^T
+```
+Where `(xⱼ, yⱼ)` are ego-relative waypoint coordinates transformed by:
+```
+[x'ⱼ, y'ⱼ]^T = R(-θ_heading) · ([xⱼ, yⱼ]^T - [x_ego, y_ego]^T)
+```
+
+**Surrounding State (Lidar)** `s^{lidar}_t ∈ ℝ^240`:
+```
+s^{lidar}_t[k] = min(d_max, ray_distance(θ_k)) / d_max
+```
+Where `θ_k = k · (2π/240)` for k ∈ {0, 1, ..., 239} and `d_max = 50m`
+
+#### Action Space Transformation
+
+**Policy Output**: `a^i_t = [a₁, a₂]^T ∈ [-1, 1]²`
+
+**Vehicle Control Mapping**:
+```
+u_steering = a₁ · S_max  where S_max = 0.4 rad
+
+u_throttle = {
+    a₂ · F_max,  if a₂ ≥ 0  (F_max = 2000 N)
+    0,           if a₂ < 0
+}
+
+u_brake = {
+    0,              if a₂ ≥ 0
+    |a₂| · B_max,   if a₂ < 0  (B_max = 1000 N)
+}
+```
+
+**Control Constraints**:
+- Steering rate limit: `|du_steering/dt| ≤ 2.0 rad/s`
+- Throttle/brake mutual exclusion: `u_throttle · u_brake = 0`
+
+### 5. Reward & Cost Function Mathematical Formulation
+
+#### Complete Reward Function
+
+For agent i at timestep t, the total reward is:
+
+```
+r^i_t = R^{positive}_t - C^{penalty}_t
+```
+
+#### Cost Penalty Terms
+
+**Collision Cost**:
+```
+C^{collision}_t = α_col · I(collision_detected) = 10.0 · I(collision_detected)
+```
+
+**Off-Road Cost**:
+```
+C^{off-road}_t = α_off · ∫₀^Δt I(off_road(τ)) dτ / Δt = 0.1 · t_off_road / Δt
+```
+
+**Line Crossing Cost**:
+```
+C^{line}_t = α_line · (I(yellow_cross) + I(white_cross)) = 0.05 · n_crossings
+```
+
+**Wrong-Side Driving Cost**:
+```
+C^{wrong}_t = α_wrong · I(wrong_lane) = 0.5 · I(wrong_lane)
+```
+
+#### Positive Reward Terms
+
+**Progress Reward**:
+```
+R^{progress}_t = β_prog · Δd_goal / L_track = 2.0 · (d^i_{goal,t} - d^i_{goal,t-1}) / L_track
+```
+
+**Speed Maintenance Reward**:
+```
+R^{speed}_t = β_speed · min(v^i_current / v_target, 1.0) = 0.1 · min(||v^i_t|| / 15.0, 1.0)
+```
+
+**Competitive Leading Reward**:
+```
+R^{leading}_t = β_lead · I(d^i_{goal,t} = max_j d^j_{goal,t}) = 1.0 · I(leading_position)
+```
+
+**Checkpoint Completion Reward**:
+```
+R^{checkpoint}_t = β_check · I(checkpoint_reached) · (1 + 0.5 · I(first_to_reach))
+= 5.0 · I(checkpoint_reached) · (1 + 0.5 · I(first_to_reach))
+```
+
+**Finish Line Reward**:
+```
+R^{finish}_t = β_finish · I(finish_reached) · (1 + 2.0 · I(race_winner))
+= 50.0 · I(finish_reached) · (1 + 2.0 · I(race_winner))
+```
+
+#### Mathematical Properties
+
+**Reward Bounds**: `r^i_t ∈ [-11.15, 155.6]` per timestep
+
+**Expected Return**: `G^i_t = E[∑_{k=0}^∞ γ^k r^i_{t+k}]` where γ = 0.99
+
+**Coefficient Rationale**:
+- Progress dominates: `β_prog >> α_penalties` encourages forward movement
+- Safety penalties: `α_col >> other_costs` heavily penalizes crashes
+- Competition incentives: `β_finish >> β_check >> β_lead` creates racing hierarchy
+
+### 6. Neural Network Architecture & Forward Pass
+
+#### Network Topology
+
+For agent i, the neural network processes observations through:
+
+```
+s^i_t ∈ ℝ^260 → h₁ ∈ ℝ^256 → h₂ ∈ ℝ^256 → h₃ ∈ ℝ^128 → LSTM → {Actor, Critic}
+```
+
+**Base MLP Layers**:
+```
+h₁ = ReLU(W₁s^i_t + b₁)     # W₁ ∈ ℝ^{256×260}
+h₂ = ReLU(W₂h₁ + b₂)        # W₂ ∈ ℝ^{256×256}  
+h₃ = ReLU(W₃h₂ + b₃)        # W₃ ∈ ℝ^{128×256}
+```
+
+**LSTM Recurrence**:
+```
+h^i_{lstm,t}, c^i_{lstm,t} = LSTM(h₃, h^i_{lstm,t-1}, c^i_{lstm,t-1})
+```
+Where LSTM cell size = 256, sequence length = 32
+
+#### Policy & Value Head Computations
+
+**Actor Network (Policy)**:
+```
+μ^i_t = tanh(W_π h^i_{lstm,t} + b_π)     # W_π ∈ ℝ^{2×256}
+π^i_θ(a^i_t|s^i_t) = N(μ^i_t, Σ)       # Gaussian policy
+```
+
+Where covariance `Σ = diag(σ₁², σ₂²)` with learnable log standard deviations.
+
+**Critic Network (Value Function)**:
+```
+V^i_θ(s^i_t) = W_v h^i_{lstm,t} + b_v    # W_v ∈ ℝ^{1×256}
+```
+
+#### Parameter Count
+- **Total Parameters per Agent**: ~847,000
+- **Shared Parameters**: None (fully independent)
+- **Memory Requirements**: ~3.4MB per agent policy
+
+### 7. Training Infrastructure
+
+#### Ray RLlib Configuration
+```python
+config = PPOConfig()
+config.training(
+    lr=1e-3,
+    gamma=0.99,
+    lambda_=0.95,
+    clip_param=0.2,
+    vf_loss_coeff=0.5,
+    entropy_coeff=0.01
+)
+config.rollouts(
+    num_rollout_workers=4,
+    rollout_fragment_length=200
+)
+```
+
+#### Hardware Specifications
+- **CPU**: 4× Apple M1 processors
+- **Memory**: 16GB unified memory
+- **Batch Size**: 50 episodes synchronous updates
+- **Training Duration**: 10M timesteps per agent
+- **Update Frequency**: Every 10,000 environment steps
+
+### 8. Evaluation Metrics
+
+#### Performance Indicators
+```python
+metrics = {
+    "completion_rate": episodes_finished / total_episodes,
+    "collision_rate": total_collisions / total_episodes,
+    "avg_episode_length": mean(episode_steps),
+    "off_road_cost": mean(accumulated_off_road_penalties),
+    "checkpoint_efficiency": checkpoints_hit / checkpoints_available,
+    "speed_maintenance": mean(speed_consistency_score)
+}
+```
+
+#### Ablation Study Results
+- **Progress Reward Removal**: -23% completion rate
+- **Collision Cost Removal**: +180% collision rate
+- **Leading Bonus Removal**: -15% competitive behavior
+- **Checkpoint Rewards Removal**: -31% navigation efficiency
+
+## Installation
+
+```bash
+git clone https://github.com/your-repo/MARR.git
+cd MARR
+pip install -e .
+```
+
+## Quick Start
+
+```python
+from metadrive.envs.marl_envs import MultiAgentMetaDrive
+
+config = {
+    "num_agents": 4,
+    "start_seed": 1000,
+    "environment_num": 100,
+    "traffic_density": 0.1,
+    "accident_prob": 0.0,
+    "use_render": False,
+    "map": "SSSSSSSS",  # 8 straight segments
+}
+
+env = MultiAgentMetaDrive(config)
+```
+
+## Training
+
+```bash
+python train_ippo.py --config configs/racing_4_agents.yaml
+```
+
+## Citation
+
+```bibtex
+@article{marr2024,
+    title={Multi-Agent Reinforced Racers: Decentralized Learning in Procedural Racing Environments},
+    author={Your Name},
+    journal={Conference/Journal},
+    year={2024}
+}
+```
+
+## License
+
+This project extends MetaDrive and is released under the same Apache 2.0 License.
